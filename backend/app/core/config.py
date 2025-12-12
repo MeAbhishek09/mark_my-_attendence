@@ -1,9 +1,12 @@
-# backend/app/core/config.py
-import os
+from pydantic_settings import BaseSettings
 
-class Settings:
-    DATABASE_URL: str = os.environ.get("DATABASE_URL", "sqlite:///./app.db")
+class Settings(BaseSettings):
+    MONGODB_URI: str
+    MONGO_DB_NAME: str = "attendance_db"
+    BACKEND_CORS_ORIGINS: str = "*"
+    ENV: str = "development"
+
+    class Config:
+        env_file = ".env"
 
 settings = Settings()
-
-

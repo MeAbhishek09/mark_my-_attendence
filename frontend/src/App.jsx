@@ -4,6 +4,7 @@ import HomeLanding from "./components/HomeLanding";
 import MarkAttendance from "./components/MarkAttendance";
 import AddStudent from "./components/AddStudent";
 import ViewRecords from "./components/ViewRecords";
+import StudentsList from "./components/StudentsList";
 
 export default function App() {
   const [page, setPage] = useState("home");
@@ -14,6 +15,7 @@ export default function App() {
         {page === "home" && <HomeLanding onMarkClick={() => setPage("mark")} />}
         {page === "mark" && <MarkAttendance />}
         {page === "add" && <AddStudent />}
+        {page === "students" && <StudentsList />}
         {page === "view" && <ViewRecords />}
       </main>
     </div>

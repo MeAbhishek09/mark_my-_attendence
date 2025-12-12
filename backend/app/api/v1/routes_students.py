@@ -1,65 +1,167 @@
 # backend/app/api/v1/routes_students.py
-from fastapi import APIRouter, Body, UploadFile, File, HTTPException
-from app.db.models_mongo import Student, FaceEmbedding
-import numpy as np
-from typing import Optional
-from app.utils.image import read_imagefile, save_crop_image  # reuse your helpers
-import io
-import base64
+from fastapi import APIRouter, Body, HTTPException, UploadFile, File, Form, Query
+from typing import Optional, List, Dict, Any
+from app.db.models_mongo import Student
+from app.db import mongo as mongo_module   # raw mongo DB (expects app/db/mongo.py exposing `db`)
+from datetime import datetime
 
 router = APIRouter()
 
-@router.post("/students/")
+def doc_to_dict(doc: Student) -> Dict[str, Any]:
+    """
+    Convert a Beanie Student document to JSON-serializable dict.
+    Accepts a Student Document instance.
+    """
+    d = doc.dict()
+    d["id"] = str(doc.id)
+    ca = d.get("created_at")
+    if isinstance(ca, datetime):
+        d["created_at"] = ca.isoformat()
+    else:
+        d["created_at"] = ca
+    return d
+
+@router.post("/", summary="Create a student (all fields required)")
 async def create_student(payload: dict = Body(...)):
-    # payload: roll_no, name, exam_no, dept, sem, class_name
-    if not payload.get("roll_no") or not payload.get("name"):
-        raise HTTPException(status_code=400, detail="roll_no and name required")
-    # unique roll_no enforced by Beanie/DB
-    existing = await Student.find_one({"roll_no": payload["roll_no"]})
-    if existing:
-        raise HTTPException(status_code=400, detail="student exists")
-    st = Student(**payload)
-    await st.insert()
-    return {"id": str(st.id), "roll_no": st.roll_no, "name": st.name}
+    # Validate presence of all required fields
+    required = ["roll_no", "name", "exam_no", "dept", "sem", "course_name"]
+    for key in required:
+        if key not in payload or payload.get(key) in [None, ""]:
+            raise HTTPException(status_code=400, detail=f"{key} is required")
 
-@router.post("/enroll/")
-async def enroll(student_id: Optional[str] = None, name: Optional[str] = None, file: UploadFile = File(...)):
-    """
-    Enroll endpoint: POST /enroll/?student_id=...&name=...
-    Saves image to disk (optional) and saves embedding (bytes) with link to Student.
-    """
-    # read image file into numpy
-    img = read_imagefile(file.file)
-    if img is None:
-        raise HTTPException(status_code=400, detail="invalid image")
-
-    # compute embedding in thread (your face_engine)
-    from app.services.face_engine import get_faces_and_embeddings  # import here to avoid startup heavy imports
-    import asyncio
-    faces = await asyncio.to_thread(get_faces_and_embeddings, img)
-    if len(faces) == 0:
-        raise HTTPException(status_code=400, detail="no face found in image")
-
-    # take first face's embedding
-    emb = faces[0]["embedding"].astype(np.float32)
-    emb_bytes = emb.tobytes()
-
-    # link student if provided
-    student_link = None
-    if student_id:
-        student = await Student.get(student_id)
-        if student:
-            student_link = student
-
-    fe = FaceEmbedding(student=student_link, embedding=emb_bytes)
-    await fe.insert()
-
-    # optional: save crop image
+    # Convert numeric fields and validate
     try:
-        x1, y1, x2, y2 = faces[0]["bbox"]
-        ts = int(time.time() * 1000)
-        save_crop_image(img, (int(x1), int(y1), int(x2), int(y2)), f"unknown_faces/enrolled_{ts}.jpg")
+        roll_no = int(payload["roll_no"])
+        exam_no = int(payload["exam_no"])
+        sem = int(payload["sem"])
     except Exception:
-        pass
+        raise HTTPException(status_code=400, detail="roll_no, exam_no and sem must be integers")
 
-    return {"success": True, "face_count": len(faces), "embedding_saved": True}
+    if sem < 1 or sem > 10:
+        raise HTTPException(status_code=400, detail="sem must be between 1 and 10")
+
+    # Uniqueness check (roll_no)
+    existing = await Student.find_one({"roll_no": roll_no})
+    if existing:
+        raise HTTPException(status_code=400, detail="student with this roll_no already exists")
+
+    # create Student (fields required by model)
+    st = Student(
+        roll_no=roll_no,
+        name=str(payload["name"]).strip(),
+        exam_no=exam_no,
+        course_name=str(payload["course_name"]).strip(),
+        dept=str(payload["dept"]).strip(),
+        sem=sem
+    )
+    await st.insert()
+    return doc_to_dict(st)
+
+
+# --- Fault-tolerant students listing (raw Mongo, avoids Beanie parsing errors) ---
+@router.get("/", summary="List students (supports q, dept, roll_no) - fault tolerant")
+async def list_students(
+    q: Optional[str] = Query(None, description="search text (name/roll/exam)"),
+    dept: Optional[str] = Query(None),
+    roll_no: Optional[str] = Query(None),
+    limit: int = Query(200, ge=1, le=2000),
+    skip: int = Query(0, ge=0),
+):
+    """
+    Return students using a raw Mongo query to avoid Beanie parsing errors when DB
+    contains documents that don't yet match the strict model.
+    This is intended to be temporary while you run a backfill / cleanup.
+    """
+    filt: Dict[str, Any] = {}
+    if roll_no is not None:
+        # try numeric first, otherwise use string
+        try:
+            filt["roll_no"] = int(roll_no)
+        except Exception:
+            filt["roll_no"] = roll_no
+    if dept:
+        filt["dept"] = str(dept)
+
+    if q:
+        regex = {"$regex": q, "$options": "i"}
+        filt["$or"] = [{"name": regex}, {"roll_no": regex}, {"exam_no": regex}]
+
+    db = mongo_module.db  # expects motor or pymongo async DB instance
+    cursor = db["students"].find(filt).skip(skip).limit(limit)
+    docs = await cursor.to_list(length=limit)
+
+    out: List[Dict[str, Any]] = []
+    for d in docs:
+        ca = d.get("created_at")
+        created_at = None
+        if isinstance(ca, datetime):
+            created_at = ca.isoformat()
+        elif isinstance(ca, (int, float)):
+            try:
+                created_at = datetime.utcfromtimestamp(ca).isoformat()
+            except Exception:
+                created_at = str(ca)
+        elif isinstance(ca, str):
+            created_at = ca
+
+        out.append({
+            "id": str(d.get("_id")) if d.get("_id") else None,
+            "roll_no": d.get("roll_no", ""),
+            "exam_no": d.get("exam_no", ""),
+            "name": d.get("name", ""),
+            "dept": d.get("dept", ""),
+            "sem": d.get("sem", ""),
+            "course_name": d.get("course_name", "") or d.get("class_name", ""),
+            "created_at": created_at,
+        })
+    return out
+
+
+@router.post("/with-photo", summary="Create student with photo (form + file)")
+async def create_student_with_photo(
+    roll_no: str = Form(...),
+    name: str = Form(...),
+    exam_no: str = Form(...),
+    dept: str = Form(...),
+    sem: str = Form(...),
+    course_name: str = Form(...),
+    file: UploadFile = File(...),
+):
+    # basic validation (same rules as JSON endpoint)
+    try:
+        roll_no_i = int(roll_no)
+        exam_no_i = int(exam_no)
+        sem_i = int(sem)
+    except Exception:
+        raise HTTPException(status_code=400, detail="roll_no, exam_no and sem must be integers")
+
+    if sem_i < 1 or sem_i > 10:
+        raise HTTPException(status_code=400, detail="sem must be between 1 and 10")
+
+    existing = await Student.find_one({"roll_no": roll_no_i})
+    if existing:
+        raise HTTPException(status_code=400, detail="student with this roll_no already exists")
+
+    # validate file
+    if not file:
+        raise HTTPException(status_code=400, detail="file is required")
+    if not (file.content_type and file.content_type.startswith("image/")):
+        raise HTTPException(status_code=400, detail="uploaded file must be an image")
+    contents = await file.read()
+    if not contents:
+        raise HTTPException(status_code=400, detail="uploaded image is empty")
+
+    st = Student(
+        roll_no=roll_no_i,
+        name=name.strip(),
+        exam_no=exam_no_i,
+        course_name=course_name.strip(),
+        dept=dept.strip(),
+        sem=sem_i,
+    )
+    await st.insert()
+
+    # The actual image/enroll processing should be handled by your enroll pipeline.
+    # You can call your enroll logic here or in a background task.
+
+    return doc_to_dict(st)

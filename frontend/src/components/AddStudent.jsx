@@ -4,13 +4,15 @@ import { createStudent, enrollImage } from "../api/studentsApi";
 
 /**
  * AddStudent (13 auto-captures)
- * - centers camera and form (3-column grid on top)
- * - on Capture it takes exactly 13 snapshots in sequence (no live-face detection)
- * - shows progress, thumbnails, and then uploads images when saving
+ * - All fields mandatory
+ * - types: roll_no:number, exam_no:number, sem:number (1-10), course_name:string
+ * - course_name replaces class_name
+ * - check duplicate (backend returns 400 if exists)
+ * - if camera not available or capture fails -> show error
  */
 
 const AUTO_CAPTURE_COUNT = 13;
-const AUTO_CAPTURE_INTERVAL_MS = 350; // time between shots
+const AUTO_CAPTURE_INTERVAL_MS = 350; // ms between shots
 
 export default function AddStudent() {
   const webcamRef = useRef(null);
@@ -21,7 +23,7 @@ export default function AddStudent() {
     exam_no: "",
     dept: "",
     sem: "",
-    class_name: "",
+    course_name: "",
   });
 
   const [captures, setCaptures] = useState([]); // { blob, url }
@@ -42,9 +44,27 @@ export default function AddStudent() {
 
   const handleChange = (e) => setForm({ ...form, [e.target.name]: e.target.value });
 
-  // Auto-capture sequence without any live detection
+  const checkCameraAvailable = () => {
+    // quick detection: webcamRef exists and video stream active
+    try {
+      const video = webcamRef.current && webcamRef.current.video;
+      if (!video) return false;
+      // videoWidth/videoHeight are 0 if no stream
+      if (video.videoWidth === 0 || video.videoHeight === 0) return false;
+      return true;
+    } catch (e) {
+      return false;
+    }
+  };
+
+  // Auto-capture sequence without face detection
   const startAutoCapture = async () => {
-    if (!webcamRef.current) return alert("Camera not ready");
+    if (capturing || saving) return;
+    // ensure camera available
+    if (!checkCameraAvailable()) {
+      alert("Camera not detected or not accessible. Please enable the camera and try again.");
+      return;
+    }
 
     // cleanup previous captures
     captures.forEach((c) => URL.revokeObjectURL(c.url));
@@ -56,14 +76,26 @@ export default function AddStudent() {
     for (let i = 0; i < AUTO_CAPTURE_COUNT; i++) {
       await new Promise((res) => setTimeout(res, AUTO_CAPTURE_INTERVAL_MS));
 
-      const imageSrc = webcamRef.current.getScreenshot();
+      // attempt to take screenshot
+      let imageSrc = null;
+      try {
+        imageSrc = webcamRef.current?.getScreenshot();
+      } catch (err) {
+        console.error("screenshot error", err);
+        imageSrc = null;
+      }
+
       if (imageSrc) {
         const blob = dataURLtoBlob(imageSrc);
         const url = URL.createObjectURL(blob);
         setCaptures((prev) => [...prev, { blob, url }]);
         setStatus(`Captured ${i + 1} / ${AUTO_CAPTURE_COUNT}`);
       } else {
-        setStatus(`Failed to capture frame ${i + 1}`);
+        setStatus(`Failed to capture frame ${i + 1}.`);
+        // If capture returns null, stop early and report to user
+        setCapturing(false);
+        alert("Failed to capture from camera. Please ensure camera is enabled and try again.");
+        return;
       }
 
       setCaptureProgress({ current: i + 1, total: AUTO_CAPTURE_COUNT });
@@ -74,27 +106,65 @@ export default function AddStudent() {
   };
 
   const handleSaveStudent = async () => {
-    if (!form.name || !form.roll_no) {
-      alert("Please enter student name and roll number before saving.");
+    // Validate mandatory fields
+    if (
+      !form.name ||
+      !form.roll_no ||
+      !form.exam_no ||
+      !form.dept ||
+      !form.sem ||
+      !form.course_name
+    ) {
+      alert("All fields are required. Please fill all fields.");
       return;
     }
 
-    if (captures.length === 0) {
-      if (!confirm("No images captured. Save student without images?")) return;
+    // validate numeric fields
+    const rollNoNum = Number(form.roll_no);
+    const examNoNum = Number(form.exam_no);
+    const semNum = Number(form.sem);
+
+    if (!Number.isInteger(rollNoNum) || rollNoNum <= 0) {
+      alert("Roll No must be a positive integer.");
+      return;
+    }
+    if (!Number.isInteger(examNoNum) || examNoNum <= 0) {
+      alert("Exam No must be a positive integer.");
+      return;
+    }
+    if (!Number.isInteger(semNum) || semNum < 1 || semNum > 10) {
+      alert("Semester (sem) must be an integer between 1 and 10.");
+      return;
+    }
+
+    // require captures (per your earlier change you removed live detection for add)
+    if (captures.length < AUTO_CAPTURE_COUNT) {
+      const ok = window.confirm(
+        `You have captured ${captures.length} images (required ${AUTO_CAPTURE_COUNT}). Do you want to continue saving?`
+      );
+      if (!ok) return;
+    }
+
+    // ensure camera was available at capture time
+    if (!checkCameraAvailable() && captures.length === 0) {
+      alert("Camera not available and no captures taken. Enable camera and try again.");
+      return;
     }
 
     setSaving(true);
     setStatus("Creating student...");
 
     try {
-      const student = await createStudent({
-        roll_no: form.roll_no,
-        name: form.name,
-        class_name: form.class_name || `${form.dept} ${form.sem}`,
-        exam_no: form.exam_no,
-        dept: form.dept,
-        sem: form.sem,
-      });
+      const payload = {
+        roll_no: rollNoNum,
+        name: form.name.trim(),
+        exam_no: examNoNum,
+        dept: form.dept.trim(),
+        sem: semNum,
+        course_name: form.course_name.trim(),
+      };
+
+      const student = await createStudent(payload); // expects {id, ...}
 
       setStatus(`Student created (id=${student.id}). Uploading ${captures.length} images...`);
       setUploadProgress({ uploaded: 0, total: captures.length });
@@ -102,6 +172,7 @@ export default function AddStudent() {
       for (let i = 0; i < captures.length; i++) {
         const blob = captures[i].blob;
         try {
+          // enrollImage expects (studentId, studentName, fileBlob)
           await enrollImage(student.id, student.name, blob);
         } catch (err) {
           console.error("upload error for image", i, err);
@@ -113,9 +184,12 @@ export default function AddStudent() {
       captures.forEach((c) => URL.revokeObjectURL(c.url));
       setCaptures([]);
       setUploadProgress(null);
+      // reset form optionally
+      setForm({ name: "", roll_no: "", exam_no: "", dept: "", sem: "", course_name: "" });
     } catch (err) {
       console.error(err);
-      alert("Failed to create or upload images: " + (err.response?.data?.detail || err.message));
+      const message = err?.response?.data?.detail || err?.response?.data?.error || err.message || "Unknown error";
+      alert("Failed to create or upload images: " + message);
       setStatus("Error saving student");
     } finally {
       setSaving(false);
@@ -128,13 +202,49 @@ export default function AddStudent() {
 
       {/* FORM ABOVE, CENTERED, 3-COLUMN GRID */}
       <div className="grid grid-cols-3 gap-4 w-full max-w-4xl mb-6">
-        <input className="border p-2 rounded" name="name" placeholder="Name" value={form.name} onChange={handleChange} />
-        <input className="border p-2 rounded" name="roll_no" placeholder="Roll No" value={form.roll_no} onChange={handleChange} />
-        <input className="border p-2 rounded" name="exam_no" placeholder="Exam No" value={form.exam_no} onChange={handleChange} />
+        <input
+          className="border p-2 rounded"
+          name="name"
+          placeholder="Name"
+          value={form.name}
+          onChange={handleChange}
+        />
+        <input
+          className="border p-2 rounded"
+          name="roll_no"
+          placeholder="Roll No (number)"
+          value={form.roll_no}
+          onChange={handleChange}
+        />
+        <input
+          className="border p-2 rounded"
+          name="exam_no"
+          placeholder="Exam No (number)"
+          value={form.exam_no}
+          onChange={handleChange}
+        />
 
-        <input className="border p-2 rounded" name="dept" placeholder="Department" value={form.dept} onChange={handleChange} />
-        <input className="border p-2 rounded" name="sem" placeholder="Semester" value={form.sem} onChange={handleChange} />
-        <input className="border p-2 rounded" name="class_name" placeholder="Class Name" value={form.class_name} onChange={handleChange} />
+        <input
+          className="border p-2 rounded"
+          name="dept"
+          placeholder="Department"
+          value={form.dept}
+          onChange={handleChange}
+        />
+        <input
+          className="border p-2 rounded"
+          name="sem"
+          placeholder="Semester (1-10)"
+          value={form.sem}
+          onChange={handleChange}
+        />
+        <input
+          className="border p-2 rounded"
+          name="course_name"
+          placeholder="Course Name"
+          value={form.course_name}
+          onChange={handleChange}
+        />
       </div>
 
       {/* CAPTURE BUTTON */}
@@ -176,7 +286,7 @@ export default function AddStudent() {
       <button
         className={`mt-6 px-6 py-2 text-lg rounded text-white ${saving ? "bg-gray-400" : "bg-green-600"}`}
         onClick={handleSaveStudent}
-        disabled={saving || captures.length === 0}
+        disabled={saving}
       >
         {saving ? `Saving & Uploading (${uploadProgress?.uploaded || 0}/${uploadProgress?.total || 0})` : "Save Student"}
       </button>
