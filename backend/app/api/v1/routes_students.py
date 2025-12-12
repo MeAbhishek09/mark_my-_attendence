@@ -4,7 +4,8 @@ from typing import Optional, List, Dict, Any
 from app.db.models_mongo import Student
 from app.db import mongo as mongo_module   # raw mongo DB (expects app/db/mongo.py exposing `db`)
 from datetime import datetime
-
+# backend: add to backend/app/api/v1/routes_students.py (imports at top)
+from bson import ObjectId
 router = APIRouter()
 
 def doc_to_dict(doc: Student) -> Dict[str, Any]:
@@ -165,3 +166,32 @@ async def create_student_with_photo(
     # You can call your enroll logic here or in a background task.
 
     return doc_to_dict(st)
+
+
+
+
+@router.delete("/", summary="Bulk delete students by ids")
+async def bulk_delete_students(payload: dict = Body(...)):
+    """
+    Accepts: { "ids": ["id1", "id2", ...] }
+    Each id is expected to be a string student.id (ObjectId) created by Mongo/Beanie.
+    Returns: {"deleted_count": N}
+    """
+    ids = payload.get("ids") or []
+    if not isinstance(ids, list) or not ids:
+        raise HTTPException(status_code=400, detail="ids must be a non-empty list")
+
+    db = mongo_module.db
+    obj_ids = []
+    for s in ids:
+        try:
+            obj_ids.append(ObjectId(s))
+        except Exception:
+            # skip invalid ObjectId strings
+            pass
+
+    if not obj_ids:
+        raise HTTPException(status_code=400, detail="no valid ObjectId in ids")
+
+    res = await db["students"].delete_many({"_id": {"$in": obj_ids}})
+    return {"deleted_count": int(res.deleted_count)}
