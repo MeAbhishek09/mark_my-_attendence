@@ -2,7 +2,7 @@
 from typing import Optional, List
 from beanie import Document, Indexed
 from pydantic import BaseModel, Field
-from datetime import datetime
+from datetime import datetime, date
 
 
 class Student(Document):
@@ -18,18 +18,6 @@ class Student(Document):
     class Settings:
         name = "students"
 
-# class Student(Document):
-#     roll_no: Indexed(str)  # indexed field
-#     name: str
-#     exam_no: Optional[str] = None
-#     class_name: Optional[str] = None
-#     dept: Optional[str] = None
-#     sem: Optional[str] = None
-#     created_at: datetime = Field(default_factory=datetime.utcnow)
-
-#     class Settings:
-#         name = "students"
-
 class FaceEmbedding(Document):
     student_id: Optional[str] = None  # store str id (or PydanticObjectId)
     embedding: bytes  # you store raw bytes (np.tobytes)
@@ -39,6 +27,7 @@ class FaceEmbedding(Document):
     class Settings:
         name = "face_embeddings"
 
+
 class SessionAttendance(BaseModel):
     student_id: Optional[str] = None
     student_name: Optional[str] = None
@@ -47,14 +36,44 @@ class SessionAttendance(BaseModel):
     confidence: Optional[float] = None
     marked_at: Optional[datetime] = None
 
+from beanie import Document
+from pydantic import Field
+from datetime import datetime, timezone
+
+
 class SessionModel(Document):
-    dept: Optional[str] = None
-    sem: Optional[str] = None
-    subject: Optional[str] = None
-    teacher: Optional[str] = None
-    started_at: Optional[datetime] = Field(default_factory=datetime.utcnow)
-    stopped_at: Optional[datetime] = None
-    attendances: List[SessionAttendance] = Field(default_factory=list)
+    # ===== Session Info =====
+    dept: str
+    sem: str
+    subject: str
+    course_name: str
+
+    # ===== Time Control =====
+    start_time: datetime
+    end_time: datetime
+    duration_mins: int
+
+    # ===== REQUIRED FOR YOUR ROUTER FILTER =====
+    created_at: datetime = Field(
+        default_factory=lambda: datetime.now(timezone.utc)
+    )
 
     class Settings:
-        name = "sessions"
+        name = "sessions"  # MongoDB collection name
+
+
+
+
+class AttendanceLog(Document):
+    session_id: str
+    student_id: str
+    student_name: Optional[str] = None
+
+    date: date
+    in_time: datetime
+    out_time: Optional[datetime] = None
+
+    confidence: float
+
+    class Settings:
+        name = "attendance_logs"

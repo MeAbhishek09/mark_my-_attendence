@@ -105,6 +105,8 @@ export default function AddStudent() {
     setStatus(`Capture finished: ${AUTO_CAPTURE_COUNT} images captured`);
   };
 
+  const [trainingLog, setTrainingLog] = useState([]);
+
   const handleSaveStudent = async () => {
     // Validate mandatory fields
     if (
@@ -171,14 +173,26 @@ export default function AddStudent() {
 
       for (let i = 0; i < captures.length; i++) {
         const blob = captures[i].blob;
+
         try {
-          // enrollImage expects (studentId, studentName, fileBlob)
-          await enrollImage(student.id, student.name, blob);
+          // 🔥 THIS IS THE KEY CHANGE
+          const res = await enrollImage(student.id, student.name, blob);
+
+          console.log("TRAINING RESULT:", res);
+
+          if (res.status !== "trained") {
+            console.warn("Training failed for image", i + 1, res);
+          }
         } catch (err) {
-          console.error("upload error for image", i, err);
+          console.error("upload error for image", i + 1, err);
         }
-        setUploadProgress((p) => ({ uploaded: p.uploaded + 1, total: p.total }));
+
+        setUploadProgress((p) => ({
+          uploaded: p.uploaded + 1,
+          total: p.total,
+        }));
       }
+
 
       setStatus("All images uploaded. Student added successfully.");
       captures.forEach((c) => URL.revokeObjectURL(c.url));
@@ -281,6 +295,20 @@ export default function AddStudent() {
           ))}
         </div>
       </div>
+
+      {/* TRAINING STATUS */}
+      {trainingLog.length > 0 && (
+        <div className="mt-4 text-sm w-full max-w-4xl">
+          <h4 className="font-semibold mb-1">Training Status</h4>
+
+          {trainingLog.map((t, i) => (
+            <div key={i} className="text-gray-600">
+              Image {t.image}: {t.status} (faces: {t.faces})
+            </div>
+          ))}
+        </div>
+      )}
+
 
       {/* SAVE BUTTON */}
       <button

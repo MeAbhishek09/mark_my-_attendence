@@ -20,24 +20,40 @@ def get_faces_and_embeddings(image_bgr):
 def cosine_similarity(a, b):
     return float(np.dot(a, b) / (norm(a) * norm(b) + 1e-8))
 
-def match_embedding(query_emb, enrolled_list, threshold=0.45):
-    best_score = -1
-    best_person = None
+def match_embedding(query_emb, enrolled, threshold=0.60):
+    """
+    Always returns a dict with the BEST similarity score,
+    even if below threshold.
+    """
+    if not enrolled:
+        return {
+            "recognized": False,
+            "student_id": None,
+            "name": None,
+            "score": 0.0,
+        }
 
-    for p in enrolled_list:
-        score = cosine_similarity(query_emb, p["embedding"])
+    best_score = -1.0
+    best_student = None
+
+    for e in enrolled:
+        score = cosine_similarity(query_emb, e["embedding"])
         if score > best_score:
             best_score = score
-            best_person = p
+            best_student = e
 
-    if best_person and best_score >= threshold:
+    if best_score >= threshold:
         return {
             "recognized": True,
-            "student_id": best_person["student_id"],
-            "name": best_person["name"],
-            "score": best_score
+            "student_id": best_student["student_id"],
+            "name": best_student["name"],
+            "score": float(best_score),
         }
-    return {
-        "recognized": False,
-        "score": best_score
-    }
+    else:
+        return {
+            "recognized": False,
+            "student_id": best_student["student_id"],
+            "name": best_student["name"],
+            "score": float(best_score),
+        }
+

@@ -12,7 +12,11 @@ export default function App() {
     <div className="min-h-screen bg-gray-100">
       <Navbar page={page} setPage={setPage} />
       <main className="p-6">
-        {page === "home" && <HomeLanding onMarkClick={() => setPage("mark")} />}
+        
+        {page === "home" && <HomeLanding
+          onMarkClick={() => setPage("mark")}
+          onViewClick={() => setPage("view")}
+        />}
         {page === "mark" && <MarkAttendance />}
         {page === "add" && <AddStudent />}
         {page === "students" && <StudentsList />}

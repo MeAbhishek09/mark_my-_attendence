@@ -1,24 +1,70 @@
 import axios from "axios";
-const BASE = "http://127.0.0.1:8000/api/v1";
 
-export async function startSession({ dept, sem, subject, teacher }) {
-  const res = await axios.post(`${BASE}/sessions/start`, { dept, sem, subject, teacher });
-  return res.data; // { session_id, started_at }
-}
+/* =========================
+   API BASE URL
+========================= */
+const API_BASE =
+  import.meta.env.VITE_API_BASE || "http://127.0.0.1:8000";
 
-export async function stopSession(session_id) {
-  const res = await axios.post(`${BASE}/sessions/${session_id}/stop`);
+/* =========================
+   LIST ACTIVE SESSIONS
+   GET /api/v1/sessions/
+========================= */
+export async function listSessions() {
+  const res = await axios.get(`${API_BASE}/api/v1/sessions/`);
   return res.data;
 }
 
-export async function sessionSummary(session_id) {
-  const res = await axios.get(`${BASE}/sessions/${session_id}/summary`);
+/* =========================
+   CREATE SESSION
+   POST /api/v1/sessions/
+========================= */
+export async function createSession(payload) {
+  /*
+    payload must be:
+    {
+      dept: string,
+      sem: string,
+      subject: string,
+      course_name: string,
+      start_time: ISO string,
+      duration: number (minutes)
+    }
+  */
+
+  const res = await axios.post(
+    `${API_BASE}/api/v1/sessions/`,
+    {
+      dept: payload.dept,
+      sem: payload.sem,
+      subject: payload.subject,
+      course_name: payload.course_name,
+      start_time: payload.start_time,
+      duration: payload.duration,
+    }
+  );
+
   return res.data;
 }
 
-export async function exportAttendance(filters = {}) {
-  // returns a CSV download URL or CSV blob
-  const params = new URLSearchParams(filters).toString();
-  const res = await axios.get(`${BASE}/attendance/export?${params}`, { responseType: "blob" });
-  return res.data; // blob
+/* =========================
+   MARK ATTENDANCE
+   POST /api/v1/sessions/{id}/mark
+========================= */
+export async function markSessionAttendance(sessionId, payload) {
+  /*
+    payload:
+    {
+      student_id: string,
+      student_name: string,
+      confidence: number
+    }
+  */
+
+  const res = await axios.post(
+    `${API_BASE}/api/v1/sessions/${sessionId}/mark`,
+    payload
+  );
+
+  return res.data;
 }

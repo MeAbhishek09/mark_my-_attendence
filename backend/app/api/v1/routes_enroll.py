@@ -42,6 +42,7 @@ async def enroll(
 
     if not faces:
         raise HTTPException(status_code=400, detail="No face detected in the image")
+    
 
     # use the first face
     emb = faces[0]["embedding"].astype(np.float32)
@@ -56,7 +57,8 @@ async def enroll(
     if not student:
         # Do NOT create student silently — require to call /students first
         raise HTTPException(status_code=404, detail="student not found. Create student using /api/v1/students/ before enrolling images.")
-
+    
+    print(f"[ENROLL] student={student.id} faces_detected={len(faces)}")
     # Optional: verify provided name matches record (log or warn)
     if name and student.name != name:
         # not fatal — but inform caller
@@ -73,8 +75,12 @@ async def enroll(
         created_at=datetime.utcnow(),
     )
     await emb_doc.insert()
+    print(f"[ENROLL] embedding saved for student={student.id}")
+
 
     return {
+        "status": "trained",
+        "faces_detected": len(faces),
         "success": True,
         "msg": "enrolled",
         "student_id": str(student.id),

@@ -2,7 +2,7 @@
 import os
 import motor.motor_asyncio
 from beanie import init_beanie
-from app.db.models_mongo import Student, FaceEmbedding, SessionModel
+from app.db.models_mongo import Student, FaceEmbedding, SessionModel , AttendanceLog
 
 MONGO_URI = os.getenv("MONGODB_URI")
 if not MONGO_URI:
@@ -14,4 +14,4 @@ if db is None:
     db = client["attendance_db"]
 
 async def init_db():
-    await init_beanie(database=db, document_models=[Student, FaceEmbedding, SessionModel])
+    await init_beanie(database=db, document_models=[Student, FaceEmbedding, SessionModel,AttendanceLog])

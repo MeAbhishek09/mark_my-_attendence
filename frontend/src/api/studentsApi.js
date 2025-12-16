@@ -11,7 +11,8 @@ export async function createStudent(payload) {
 export async function enrollImage(studentId, studentName, fileBlob) {
   const form = new FormData();
   form.append("student_id", studentId);
-  form.append("student_name", studentName);
+  form.append("name", studentName);
+  // form.append("student_name", studentName);
   form.append("file", fileBlob, "capture.jpg");
   const res = await axios.post(`${BASE_URL}/api/v1/enroll/`, form, {
     headers: { "Content-Type": "multipart/form-data" },

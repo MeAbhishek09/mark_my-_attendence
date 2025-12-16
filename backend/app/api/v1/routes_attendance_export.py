@@ -1,37 +1,86 @@
 # backend/app/api/v1/routes_attendance_export.py
 from fastapi import APIRouter, Query, Response
-from app.db.models_mongo import SessionModel
-import csv
-from io import StringIO
-from datetime import datetime
+from app.db.models_mongo import AttendanceLog, SessionModel
 from typing import Optional
+from io import StringIO
+import csv
+from datetime import datetime, date, timedelta
 
 router = APIRouter()
 
-@router.get("/attendance/export")
-async def export_attendance(dept: Optional[str] = Query(None), sem: Optional[str] = Query(None), subject: Optional[str] = Query(None)):
-    q = {}
-    if dept: q["dept"] = dept
-    if sem: q["sem"] = sem
-    if subject: q["subject"] = subject
+@router.get("/export")
+async def export_attendance(
+    dept: Optional[str] = Query(None),
+    sem: Optional[str] = Query(None),
+    name: Optional[str] = Query(None),
+    range: Optional[str] = Query("today"),  # ✅ NEW
+):
+    today = date.today()
 
-    sessions = SessionModel.find(q)
+    # ✅ DATE RANGE LOGIC
+    if range == "today":
+        start_date = today
+        end_date = today
+
+    elif range == "week":
+        start_date = today - timedelta(days=today.weekday())
+        end_date = today
+
+    elif range == "month":
+        start_date = today.replace(day=1)
+        end_date = today
+
+    elif range == "year":
+        start_date = today.replace(month=1, day=1)
+        end_date = today
+
+    else:
+        start_date = today
+        end_date = today
+
     out = StringIO()
-    w = csv.writer(out)
-    w.writerow(["session_id","dept","sem","subject","student_id","student_name","first_seen","last_seen","confidence","marked_at"])
+    writer = csv.writer(out)
 
-    async for s in sessions:
-        for att in s.attendances:
-            w.writerow([
-                str(s.id), s.dept, s.sem, s.subject,
-                att.student_id, att.student_name,
-                att.first_seen.isoformat(), att.last_seen.isoformat(),
-                att.confidence, att.marked_at.isoformat()
-            ])
+    writer.writerow([
+        "Dept",
+        "Sem",
+        "Subject",
+        "Roll No",
+        "Student Name",
+        "Date",
+        "In Time",
+        "Confidence",
+    ])
 
-    csv_text = out.getvalue()
+    async for log in AttendanceLog.find({
+        "date": {"$gte": start_date, "$lte": end_date}
+    }):
+        session = await SessionModel.get(log.session_id)
+        if not session:
+            continue
+
+        # 🔹 filters
+        if dept and session.dept != dept:
+            continue
+        if sem and session.sem != sem:
+            continue
+        if name and log.student_name and name.lower() not in log.student_name.lower():
+            continue
+
+        writer.writerow([
+            session.dept,
+            session.sem,
+            session.subject,
+            log.student_id,
+            log.student_name,
+            log.date.isoformat(),
+            log.in_time.replace(tzinfo=None).isoformat() if log.in_time else "",
+            log.confidence,
+        ])
+
     headers = {
-        "Content-Disposition": f'attachment; filename="attendance_{datetime.utcnow().date().isoformat()}.csv"',
-        "Content-Type": "text/csv"
+        "Content-Disposition": f'attachment; filename="attendance_{range}_{today}.csv"',
+        "Content-Type": "text/csv",
     }
-    return Response(content=csv_text, media_type="text/csv", headers=headers)
+
+    return Response(out.getvalue(), media_type="text/csv", headers=headers)

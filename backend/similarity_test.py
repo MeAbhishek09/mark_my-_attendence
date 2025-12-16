@@ -10,6 +10,6 @@ def emb_from_path(path):
         raise ValueError("No face found in " + path)
     return faces[0]["embedding"]
 
-a = emb_from_path(r"C:/Users/91991/Downloads/abhishek1.png")
-b = emb_from_path(r"C:/Users/91991/Downloads/Abhishek_prof.jpg")
+a = emb_from_path(r"C:/Users/91991/OneDrive/Pictures/Camera Roll 1/WIN_20251213_00_26_23_Pro.jpg")
+b = emb_from_path(r"C:/Users/91991/OneDrive/Pictures/Camera Roll 1/WIN_20251213_00_26_17_Pro.jpg")
 print("cosine similarity:", cosine_similarity(a, b))
