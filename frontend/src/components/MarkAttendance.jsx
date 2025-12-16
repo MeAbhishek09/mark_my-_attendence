@@ -217,188 +217,187 @@ export default function MarkAttendance() {
 
 
   /* =========================
-     UI
-  ========================= */
-  return (
-    <div className="p-6">
-      <h2 className="text-3xl font-bold mb-4">Attendance Sessions</h2>
+   UI
+========================= */
+return (
+  <div className="p-4 md:p-6 max-w-7xl mx-auto">
+    {/* PAGE TITLE */}
+    <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-6 gap-3">
+      <h2 className="text-2xl md:text-3xl font-bold text-gray-800">
+        Attendance Sessions
+      </h2>
 
-      <div className="flex gap-3 mb-4">
-        {/* CREATE SESSION BUTTON */}
+      <div className="flex gap-2">
         <button
-          className="bg-blue-600 text-white px-4 py-2 rounded"
+          className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm"
           onClick={() => setShowCreate(!showCreate)}
         >
           + Create Session
         </button>
 
-        {/* SHOW EXPIRED ONLY BUTTON */}
         <button
-          className={`px-4 py-2 rounded border
+          className={`px-4 py-2 rounded-lg text-sm border
             ${
               showExpiredOnly
-                ? "bg-gray-700 text-white"
-                : "bg-gray-200 text-gray-800"
+                ? "bg-gray-800 text-white"
+                : "bg-gray-100 text-gray-700"
             }`}
           onClick={() => setShowExpiredOnly(!showExpiredOnly)}
         >
-          {showExpiredOnly ? "Show Live Sessions" : "Show Expired Sessions"}
+          {showExpiredOnly ? "Show Live" : "Show Expired"}
         </button>
       </div>
+    </div>
 
-      {/* CREATE SESSION FORM */}
-      {showCreate && (
-        <div className="bg-gray-100 p-4 rounded mb-6">
-          <div className="grid grid-cols-3 gap-3">
-            <input name="dept" placeholder="Department" className="border p-2" onChange={updateForm} />
-            <input name="sem" placeholder="Semester" className="border p-2" onChange={updateForm} />
-            <input name="subject" placeholder="Subject" className="border p-2" onChange={updateForm} />
+    {/* CREATE SESSION FORM */}
+    {showCreate && (
+      <div className="bg-white shadow rounded-xl p-4 md:p-6 mb-8">
+        <h3 className="font-semibold text-lg mb-4">Create New Session</h3>
 
-            <input name="course_name" placeholder="Course Name" className="border p-2" onChange={updateForm} />
-            <input
-              name="start_time"
-              type="datetime-local"
-              className="border p-2"
-              onChange={updateForm}
-            />
-            <input name="duration" placeholder="Duration (minutes)" className="border p-2" onChange={updateForm} />
-          </div>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+          <input name="dept" placeholder="Department" className="border rounded p-2" onChange={updateForm} />
+          <input name="sem" placeholder="Semester" className="border rounded p-2" onChange={updateForm} />
+          <input name="subject" placeholder="Subject" className="border rounded p-2" onChange={updateForm} />
 
-
-          <button
-            onClick={handleCreateSession}
-            disabled={creating}
-            className={`px-4 py-2 rounded mt-3 text-white
-              ${creating ? "bg-gray-400 cursor-not-allowed" : "bg-green-600"}
-            `}
-          >
-            {creating ? "Saving..." : "Save Session"}
-          </button>
-
+          <input name="course_name" placeholder="Course Name" className="border rounded p-2" onChange={updateForm} />
+          <input name="start_time" type="datetime-local" className="border rounded p-2" onChange={updateForm} />
+          <input name="duration" placeholder="Duration (minutes)" className="border rounded p-2" onChange={updateForm} />
         </div>
-      )}
 
-      {/* SESSION LIST */}
-      
-<div className="space-y-3">
-  {filteredSessions.map((s) => {
-    const isActive = s.status === "LIVE";
-    const formatIST = (isoString) => {
-    const date = new Date(isoString);
+        <button
+          onClick={handleCreateSession}
+          disabled={creating}
+          className={`mt-4 px-5 py-2 rounded-lg text-white text-sm
+            ${creating ? "bg-gray-400" : "bg-green-600 hover:bg-green-700"}`}
+        >
+          {creating ? "Saving..." : "Save Session"}
+        </button>
+      </div>
+    )}
 
-      return date.toLocaleString("en-IN", {
-        day: "2-digit",
-        month: "short",
-        year: "numeric",
-        hour: "2-digit",
-        minute: "2-digit",
-        hour12: true,
-        timeZone: "Asia/Kolkata",
-      });
-    };
+    {/* SESSION LIST */}
+    <div className="grid gap-4">
+      {filteredSessions.map((s) => {
+        const isActive = s.status === "LIVE";
 
-    return (
-      <div
-        key={s.id}
-        className="flex justify-between items-center bg-white p-3 border rounded"
-      >
-        <div>
-          <div className="font-semibold">{s.subject}</div>
+        const formatIST = (iso) =>
+          new Date(iso).toLocaleString("en-IN", {
+            day: "2-digit",
+            month: "short",
+            year: "numeric",
+            hour: "2-digit",
+            minute: "2-digit",
+            hour12: true,
+            timeZone: "Asia/Kolkata",
+          });
 
-          <div className="text-sm text-gray-600 flex flex-wrap gap-2 items-center">
-            <span>{s.dept}</span>
-            <span>• Sem {s.sem}</span>
-            <span>• {formatIST(s.start_time)}</span>
-            {/* <span>• {s.start_time}</span> */}
-            <span>• {s.duration} mins</span>
+        return (
+          <div
+            key={s.id}
+            className="bg-white border rounded-xl p-4 flex flex-col md:flex-row md:items-center md:justify-between gap-3 shadow-sm"
+          >
+            <div>
+              <h4 className="font-semibold text-gray-800">{s.subject}</h4>
+              <div className="text-sm text-gray-600 flex flex-wrap gap-2 mt-1">
+                <span>{s.dept}</span>
+                <span>• Sem {s.sem}</span>
+                <span>• {formatIST(s.start_time)}</span>
+                <span>• {s.duration} mins</span>
+              </div>
 
-            {/* STATUS BADGE */}
-            <span
-              className={`px-2 py-0.5 rounded text-xs font-semibold
+              <span
+                className={`inline-block mt-2 px-2 py-0.5 rounded-full text-xs font-semibold
+                  ${
+                    isActive
+                      ? "bg-green-100 text-green-700"
+                      : "bg-yellow-100 text-yellow-700"
+                  }`}
+              >
+                {s.status}
+              </span>
+            </div>
+
+            <button
+              disabled={!isActive}
+              onClick={() => joinSession(s)}
+              className={`px-5 py-2 rounded-lg text-sm text-white
                 ${
                   isActive
-                    ? "bg-green-100 text-green-700"
-                    : "bg-yellow-100 text-yellow-700"
+                    ? "bg-green-600 hover:bg-green-700"
+                    : "bg-gray-400 cursor-not-allowed"
                 }`}
             >
-              {s.status}
-            </span>
+              Join Session
+            </button>
           </div>
-        </div>
+        );
+      })}
+    </div>
 
-        {/* JOIN BUTTON */}
-        <button
-          disabled={!isActive}
-          onClick={() => joinSession(s)}
-          className={`px-4 py-1 rounded text-white transition
-            ${
-              isActive
-                ? "bg-green-600 hover:bg-green-700"
-                : "bg-gray-400 cursor-not-allowed"
-            }`}
-        >
-          Join Session
-        </button>
-      </div>
-    );
-  })}
-</div>
+    {/* CAMERA MODAL */}
+    {cameraOpen && (
+      <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
+        <div className="bg-white rounded-xl p-4 w-full max-w-md relative">
+          <h3 className="text-lg font-bold mb-2">Face Recognition</h3>
 
+          <div className="relative rounded overflow-hidden">
+            <Webcam
+              ref={webcamRef}
+              screenshotFormat="image/jpeg"
+              width="100%"
+              height={CAMERA_HEIGHT}
+              className="rounded"
+            />
 
-      {/* CAMERA POPUP */}
-      {cameraOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50">
-          <div className="bg-white p-4 rounded relative">
-            <h3 className="text-lg font-bold mb-2">Face Recognition</h3>
-
-            <div className="relative">
-              <Webcam
-                ref={webcamRef}
-                screenshotFormat="image/jpeg"
-                width={CAMERA_WIDTH}
-                height={CAMERA_HEIGHT}
+            {faceBox && (
+              <div
+                className="absolute border-4 border-blue-500"
+                style={{
+                  left: faceBox.x,
+                  top: faceBox.y,
+                  width: faceBox.w,
+                  height: faceBox.h,
+                }}
               />
-
-              {faceBox && (
-                <div
-                  className="absolute border-4 border-blue-500"
-                  style={{
-                    left: faceBox.x,
-                    top: faceBox.y,
-                    width: faceBox.w,
-                    height: faceBox.h,
-                  }}
-                />
-              )}
-            </div>
-
-            <div className="text-sm mt-2">{status}</div>
-
-            <div className="flex gap-3 mt-3">
-              <button className="bg-blue-600 text-white px-4 py-1 rounded" onClick={captureAndRecognize}>
-                Capture & Recognize
-              </button>
-              <button className="bg-red-500 text-white px-4 py-1 rounded" onClick={() => setCameraOpen(false)}>
-                Close
-              </button>
-            </div>
-
-            {student && (
-              <div className="bg-green-100 p-3 rounded mt-4">
-                <div className="font-bold">{student.name}</div>
-                <div className="text-sm">Confidence: {student.confidence}</div>
-
-                <button
-                  className="bg-green-600 text-white px-4 py-1 rounded mt-2"
-                  onClick={confirmAttendance}
-                >
-                  Confirm Attendance
-                </button>
-              </div>
             )}
           </div>
+
+          <p className="text-sm mt-2 text-gray-600">{status}</p>
+
+          <div className="flex gap-2 mt-3">
+            <button
+              className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-1.5 rounded"
+              onClick={captureAndRecognize}
+            >
+              Capture
+            </button>
+
+            <button
+              className="bg-red-500 hover:bg-red-600 text-white px-4 py-1.5 rounded"
+              onClick={() => setCameraOpen(false)}
+            >
+              Close
+            </button>
+          </div>
+
+          {student && (
+            <div className="bg-green-50 border border-green-200 rounded-lg p-3 mt-4">
+              <div className="font-semibold">{student.name}</div>
+              <div className="text-sm text-gray-700">
+                Confidence: {student.confidence}
+              </div>
+
+              <button
+                className="mt-2 bg-green-600 hover:bg-green-700 text-white px-4 py-1.5 rounded"
+                onClick={confirmAttendance}
+              >
+                Confirm Attendance
+              </button>
+            </div>
+          )}
         </div>
-      )}
-    </div>
-  );
+      </div>
+    )}
+  </div>
+);
 }
