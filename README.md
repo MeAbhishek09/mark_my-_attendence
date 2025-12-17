@@ -104,6 +104,20 @@ When attendance is being marked:
 | Slow | Fast |
 
 ---
+## 🔥 Face Recognition Model Used
+
+### **InsightFace (ArcFace-based Face Recognition Model)**
+
+---
+
+### What this means
+
+- **InsightFace** is a state-of-the-art face recognition framework  
+- It uses **ArcFace loss** for highly discriminative feature learning  
+- The backbone network is typically **ResNet** (e.g., ResNet50 / ResNet100)  
+- The model generates **512-dimensional face embeddings**
+
+---
 
 ## 🏗️ Application Architecture
 
