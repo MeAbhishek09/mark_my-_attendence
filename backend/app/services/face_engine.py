@@ -3,8 +3,14 @@ import numpy as np
 import cv2
 from numpy.linalg import norm
 
+
+# face_app = insightface.app.FaceAnalysis(
+#     providers=['CUDAExecutionProvider', 'CPUExecutionProvider']
+# )
+# ✅ Use SMALLER model + CPU ONLY
 face_app = insightface.app.FaceAnalysis(
-    providers=['CUDAExecutionProvider', 'CPUExecutionProvider']
+    name="buffalo_s",                     # 👈 smaller model
+    providers=["CPUExecutionProvider"]     # 👈 Render has no GPU
 )
 face_app.prepare(ctx_id=0, det_size=(640, 640))  # GPU if available, else CPU
 
