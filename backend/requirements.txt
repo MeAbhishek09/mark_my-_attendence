@@ -1,10 +1,30 @@
+# Web framework
 fastapi
 uvicorn
+
+# Database (MongoDB)
 motor
 beanie
+pymongo
+
+# ML / Face Recognition
 numpy
-opencv-python-headless
 insightface
 onnxruntime
-python-multipart
+
+# Image handling
+opencv-python-headless
 pillow
+
+# File upload
+python-multipart
+
+# Environment variables
+python-dotenv
+
+# CSV / Excel export (attendance export)
+pandas
+openpyxl
+
+# Utilities
+tqdm
