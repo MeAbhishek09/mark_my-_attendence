@@ -22,10 +22,10 @@ from app.db.mongo import init_db
 app = FastAPI(title="Student Face Attendance")
 
 # DEV: allow local frontend origin + allow all for quick testing.
-FRONTEND_ORIGINS = [
-    "http://localhost:5173",
-    "http://127.0.0.1:5173",
-]
+# FRONTEND_ORIGINS = [
+#     "http://localhost:5173",
+#     "http://127.0.0.1:5173",
+# ]
 
 
 origins_env = os.getenv("BACKEND_CORS_ORIGINS")
@@ -52,7 +52,7 @@ app.include_router(routes_enroll.router, prefix="/api/v1/enroll", tags=["enroll"
 app.include_router(routes_recognize.router, prefix="/api/v1/recognize", tags=["recognize"])
 app.include_router(routes_students.router, prefix="/api/v1/students", tags=["students"])
 app.include_router(routes_attendance.router, prefix="/api/v1/attendance", tags=["attendance"])
-app.include_router(routes_unknowns.router, prefix="/api/v1/unknowns", tags=["unknowns"])
+# app.include_router(routes_unknowns.router, prefix="/api/v1/unknowns", tags=["unknowns"])
 
 
 @app.get("/", tags=["root"])
