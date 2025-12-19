@@ -3,6 +3,8 @@ import os
 import motor.motor_asyncio
 from beanie import init_beanie
 from app.db.models_mongo import Student, FaceEmbedding, SessionModel , AttendanceLog
+from dotenv import load_dotenv
+load_dotenv()
 
 MONGO_URI = os.getenv("MONGODB_URI")
 if not MONGO_URI:

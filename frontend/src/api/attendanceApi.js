@@ -1,6 +1,7 @@
 import axios from "axios";
 
-const BASE = "http://127.0.0.1:8000/api/v1";
+// const BASE = "http://127.0.0.1:8000/api/v1";
+const BASE = `${import.meta.env.VITE_API_BASE || "http://127.0.0.1:8000"}/api/v1`;
 
 
 export async function exportAttendance(filters = {}, range = "today") {
@@ -13,7 +14,6 @@ export async function exportAttendance(filters = {}, range = "today") {
 
   return res.data;
 }
-
 
 
 export async function attendanceToday(range = "today") {

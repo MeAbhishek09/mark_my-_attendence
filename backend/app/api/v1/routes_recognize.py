@@ -66,19 +66,6 @@ async def recognize(
 
         # save unknown face
         if not match["recognized"]:
-            try:
-                x1, y1, x2, y2 = f["bbox"]
-                h, w = img.shape[:2]
-                x1, y1 = max(0, int(x1)), max(0, int(y1))
-                x2, y2 = min(w, int(x2)), min(h, int(y2))
-                ts = int(time.time() * 1000)
-                filename = f"unknown_{ts}_{idx}.jpg"
-                save_crop_image(
-                    img,
-                    (x1, y1, x2, y2),
-                    os.path.join(UNKNOWN_DIR, filename),
-                )
-            except Exception as e:
-                print("save unknown crop error:", e)
+            pass
 
     return {"faces": results}

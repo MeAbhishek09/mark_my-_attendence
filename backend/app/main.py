@@ -27,14 +27,23 @@ FRONTEND_ORIGINS = [
     "http://127.0.0.1:5173",
 ]
 
-# In dev you can add "*" temporarily, but in prod set exact origins.
+
+origins_env = os.getenv("BACKEND_CORS_ORIGINS")
+
+origins = (
+    [o.strip() for o in origins_env.split(",") if o.strip()]
+    if origins_env
+    else ["*"]
+)
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=FRONTEND_ORIGINS + ["*"],
+    allow_origins=origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
 
 # include routers
 app.include_router(routes_sessions.router, prefix="/api/v1/sessions", tags=["sessions"])
@@ -51,12 +60,13 @@ async def root():
     return {"message": "Face Attendance Backend Running"}
 
 
+
 @app.on_event("startup")
 async def on_startup():
     try:
-        # initialize Mongo/Beanie
         await init_db()
-        print("Mongo / Beanie initialized.")
-    except Exception:
+        print("✅ Mongo / Beanie initialized.")
+    except Exception as e:
         traceback.print_exc()
-        print("Warning: failed to initialize Mongo/Beanie on startup.")
+        print("❌ Mongo init failed")
+        raise RuntimeError("Database initialization failed") from e

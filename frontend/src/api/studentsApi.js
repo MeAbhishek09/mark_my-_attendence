@@ -1,6 +1,7 @@
 // frontend/src/api/studentsApi.js
 import axios from "axios";
-const BASE_URL = "http://127.0.0.1:8000";
+// const BASE_URL = "http://127.0.0.1:8000";
+const BASE_URL = import.meta.env.VITE_API_BASE || "http://127.0.0.1:8000";
 
 export async function createStudent(payload) {
   // payload must already have numeric roll_no, exam_no, sem

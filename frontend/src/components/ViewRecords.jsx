@@ -22,15 +22,35 @@ export default function ViewRecords() {
     loadPreview();
   }, [range]);
 
-  async function loadPreview() {
-    try {
-      const data = await attendanceToday(range);
+async function loadPreview() {
+  try {
+    const data = await attendanceToday(range);
+
+    // ✅ FORCE array
+    if (Array.isArray(data)) {
       setPreview(data);
-    } catch (e) {
-      console.error(e);
-      setPreview([]);
+    } else if (Array.isArray(data?.records)) {
+      setPreview(data.records);
+    } else if (Array.isArray(data?.data)) {
+      setPreview(data.data);
+    } else {
+      setPreview([]); // fallback
     }
+  } catch (e) {
+    console.error(e);
+    setPreview([]);
   }
+}
+
+  // async function loadPreview() {
+  //   try {
+  //     const data = await attendanceToday(range);
+  //     setPreview(data);
+  //   } catch (e) {
+  //     console.error(e);
+  //     setPreview([]);
+  //   }
+  // }
 
   const filteredPreview = preview.filter((r) => {
   const matchDept =

@@ -1,6 +1,7 @@
 import axios from "axios";
 
-const BASE = "http://127.0.0.1:8000/api/v1/unknowns";
+// const BASE = "http://127.0.0.1:8000/api/v1/unknowns";
+const BASE_URL = import.meta.env.VITE_API_BASE || "http://127.0.0.1:8000";
 
 export async function fetchUnknowns() {
   const res = await axios.get(BASE + "/");

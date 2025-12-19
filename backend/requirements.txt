@@ -1,0 +1,10 @@
+fastapi
+uvicorn
+motor
+beanie
+numpy
+opencv-python-headless
+insightface
+onnxruntime
+python-multipart
+pillow

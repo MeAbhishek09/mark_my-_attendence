@@ -2,7 +2,8 @@
 import axios from "axios";
 
 
-const BASE_URL = "http://127.0.0.1:8000";
+// const BASE_URL = "http://127.0.0.1:8000";
+const BASE_URL = import.meta.env.VITE_API_BASE || "http://127.0.0.1:8000";
 
 export function createStudent(payload) {
   return axios.post(`${BASE_URL}/api/v1/students/`, payload);

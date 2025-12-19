@@ -11,7 +11,7 @@ import { createStudent, enrollImage } from "../api/studentsApi";
  * - if camera not available or capture fails -> show error
  */
 
-const AUTO_CAPTURE_COUNT = 13;
+const AUTO_CAPTURE_COUNT = 21;
 const AUTO_CAPTURE_INTERVAL_MS = 350; // ms between shots
 
 export default function AddStudent() {
