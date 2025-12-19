@@ -7,6 +7,7 @@ from app.db.models_mongo import Student, FaceEmbedding, SessionModel , Attendanc
 MONGO_URI = os.getenv("MONGODB_URI")
 if not MONGO_URI:
     raise RuntimeError("MONGODB_URI not set in environment")
+print("MONGO_URI =", os.getenv("MONGODB_URI"))
 
 client = motor.motor_asyncio.AsyncIOMotorClient(MONGO_URI)
 db = client.get_default_database()

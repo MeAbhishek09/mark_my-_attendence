@@ -131,56 +131,60 @@ export default function MarkAttendance() {
   /* =========================
      CAPTURE + RECOGNIZE
   ========================= */
+  const [capturing, setCapturing] = useState(false);
+
   const captureAndRecognize = async () => {
-  if (!webcamRef.current) return;
-
-  const imageSrc = webcamRef.current.getScreenshot();
-  if (!imageSrc) {
-    setStatus("Camera not detected");
-    return;
-  }
-
-  const blob = dataURLtoBlob(imageSrc);
-
-  try {
+    if (!webcamRef.current || capturing) return;
+  
+    setCapturing(true);          // 🔒 disable ONLY Capture
     setStatus("Recognizing...");
-
-    // ✅ CALL ONLY THIS API (detect + recognize + attendance)
-    const recog = await recognizeFace(blob, { session_id: joining.id });
-
-    const face = recog?.faces?.[0];
-    if (!face) {
-      setStatus("No face detected");
-      return;
+  
+    try {
+      const imageSrc = webcamRef.current.getScreenshot();
+      if (!imageSrc) {
+        setStatus("Camera not detected");
+        return;
+      }
+  
+      const blob = dataURLtoBlob(imageSrc);
+  
+      const recog = await recognizeFace(blob, { session_id: joining.id });
+  
+      const face = recog?.faces?.[0];
+      if (!face) {
+        setStatus("No face detected");
+        return;
+      }
+  
+      if (face.bbox) {
+        const [x1, y1, x2, y2] = face.bbox;
+        setFaceBox({
+          x: x1,
+          y: y1,
+          w: x2 - x1,
+          h: y2 - y1,
+        });
+      }
+  
+      if (face.match?.recognized) {
+        setStudent({
+          id: face.match.student_id,
+          name: face.match.name,
+          confidence: Number(face.match.score).toFixed(2),
+        });
+        setStatus("Face matched");
+      } else {
+        setStatus("Unknown face");
+      }
+    } catch (e) {
+      console.error(e);
+      setStatus("Recognition failed");
+    } finally {
+      setCapturing(false);       // 🔓 re-enable Capture
     }
-
-    // ✅ Draw bounding box
-    if (face.bbox) {
-      const [x1, y1, x2, y2] = face.bbox;
-      setFaceBox({
-        x: x1,
-        y: y1,
-        w: x2 - x1,
-        h: y2 - y1,
-      });
-    }
-
-    if (face.match?.recognized) {
-      setStudent({
-        id: face.match.student_id,
-        name: face.match.name,
-        confidence: Number(face.match.score).toFixed(2),
-      });
-      setStatus("Face matched");
-    } else {
-      setStatus("Unknown face");
-    }
-  } catch (e) {
-    console.error(e);
-    setStatus("Recognition failed");
-  }
-};
-
+  };
+  
+  
 
   /* =========================
      CONFIRM ATTENDANCE
@@ -365,13 +369,18 @@ return (
           <p className="text-sm mt-2 text-gray-600">{status}</p>
 
           <div className="flex gap-2 mt-3">
+            {/* CAPTURE */}
             <button
-              className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-1.5 rounded"
+              className={`px-4 py-1.5 rounded text-white
+                ${capturing ? "bg-gray-400 cursor-not-allowed" : "bg-blue-600 hover:bg-blue-700"}
+              `}
               onClick={captureAndRecognize}
+              disabled={capturing}
             >
-              Capture
+              {capturing ? "Capturing..." : "Capture"}
             </button>
 
+            {/* CLOSE — ALWAYS ENABLED ✅ */}
             <button
               className="bg-red-500 hover:bg-red-600 text-white px-4 py-1.5 rounded"
               onClick={() => setCameraOpen(false)}
@@ -379,6 +388,8 @@ return (
               Close
             </button>
           </div>
+
+
 
           {student && (
             <div className="bg-green-50 border border-green-200 rounded-lg p-3 mt-4">
