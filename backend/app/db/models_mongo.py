@@ -14,6 +14,10 @@ class Student(Document):
     dept: str = Field(..., description="Department code/name")
     sem: int = Field(..., ge=1, le=10, description="Semester (1-10)")
     created_at: datetime = Field(default_factory=datetime.utcnow, description="Creation timestamp")
+    # ===== ENROLLMENT TRACKING (🔥 IMPORTANT) =====
+    enroll_failures: int = Field(default=0, description="Failed image enroll attempts")
+    enrolled_images: int = Field(default=0, description="Successfully enrolled images")
+
 
     class Settings:
         name = "students"

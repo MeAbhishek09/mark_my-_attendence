@@ -22,10 +22,16 @@ async def create_session(payload: dict = Body(...)):
 
     try:
         # start_time from <datetime-local> → local IST
-        local_time = datetime.fromisoformat(payload["start_time"])
+        IST = timezone(timedelta(hours=5, minutes=30))
+        UTC = timezone.utc
 
-        # convert IST → UTC before saving
-        start_time_utc = local_time.astimezone(UTC)
+        local_naive = datetime.fromisoformat(payload["start_time"])
+
+        # 👇 explicitly tell Python this is IST
+        local_ist = local_naive.replace(tzinfo=IST)
+
+        # 👇 convert IST → UTC
+        start_time_utc = local_ist.astimezone(UTC)
 
         duration = int(payload["duration"])
     except Exception as e:

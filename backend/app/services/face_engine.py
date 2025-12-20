@@ -4,16 +4,12 @@
 # from numpy.linalg import norm
 
 
-# # face_app = insightface.app.FaceAnalysis(
-# #     providers=['CUDAExecutionProvider', 'CPUExecutionProvider']
-# # )
-# # ✅ Use SMALLER model + CPU ONLY
 # face_app = insightface.app.FaceAnalysis(
-#     name="buffalo_s",                     # 👈 smaller model
-#     providers=["CPUExecutionProvider"]     # 👈 Render has no GPU
+#     providers=['CUDAExecutionProvider', 'CPUExecutionProvider']
 # )
-# # face_app.prepare(ctx_id=0, det_size=(640, 640))  # GPU if available, else CPU
-# face_app.prepare(ctx_id=-1, det_size=(640, 640)) 
+
+# face_app.prepare(ctx_id=0, det_size=(640, 640))  # GPU if available, else CPU
+
 # def get_faces_and_embeddings(image_bgr):
 #     faces = face_app.get(image_bgr)
 #     results = []

@@ -106,7 +106,7 @@ export default function AddStudent() {
   };
 
   const [trainingLog, setTrainingLog] = useState([]);
-
+  let enrollmentFailed = false;
   const handleSaveStudent = async () => {
     // Validate mandatory fields
     if (
@@ -170,21 +170,50 @@ export default function AddStudent() {
 
       setStatus(`Student created (id=${student.id}). Uploading ${captures.length} images...`);
       setUploadProgress({ uploaded: 0, total: captures.length });
+      
 
       for (let i = 0; i < captures.length; i++) {
         const blob = captures[i].blob;
 
         try {
-          // 🔥 THIS IS THE KEY CHANGE
           const res = await enrollImage(student.id, student.name, blob);
 
-          console.log("TRAINING RESULT:", res);
-
           if (res.status !== "trained") {
-            console.warn("Training failed for image", i + 1, res);
+            throw new Error("Training failed");
           }
         } catch (err) {
-          console.error("upload error for image", i + 1, err);
+          // 🚨 NETWORK ERROR (NO RESPONSE)
+          if (!err.response) {
+            alert(
+              "Network error detected.\n" +
+              "Please check your internet connection.\n\n" +
+              "Enrollment is paused. You can retry."
+            );
+
+            setStatus("Network error. Enrollment paused.");
+            break; // ⛔ STOP loop, DO NOT mark failure
+          }
+          const msg =
+            err?.response?.data?.detail ||
+            err?.response?.data?.error ||
+            err.message ||
+            "";
+
+          console.error("Enroll error:", msg);
+
+          // 🚨 BACKEND ROLLBACK OR FAILURE
+          if (msg === "ENROLLMENT_FAILED_STUDENT_REMOVED") {
+            enrollmentFailed = true;
+
+            alert(
+              "Enrollment failed due to bad images.\n" +
+              "Student record was removed.\n\n" +
+              "Please restart the process."
+            );
+
+            setStatus("Enrollment failed. Please retry.");
+            break; // ⛔ STOP uploading immediately
+          }
         }
 
         setUploadProgress((p) => ({
@@ -194,7 +223,26 @@ export default function AddStudent() {
       }
 
 
-      setStatus("All images uploaded. Student added successfully.");
+
+      if (!enrollmentFailed) {
+        setStatus("All images uploaded. Student added successfully.");
+        alert("Student enrolled successfully");
+
+        captures.forEach((c) => URL.revokeObjectURL(c.url));
+        setCaptures([]);
+        setUploadProgress(null);
+        setForm({
+          name: "",
+          roll_no: "",
+          exam_no: "",
+          dept: "",
+          sem: "",
+          course_name: "",
+        });
+      }
+
+      
+
       captures.forEach((c) => URL.revokeObjectURL(c.url));
       setCaptures([]);
       setUploadProgress(null);
