@@ -61,11 +61,39 @@ async def root():
 
 
 
+# @app.on_event("startup")
+# async def on_startup():
+#     try:
+#         await init_db()
+#         print("✅ Mongo / Beanie initialized.")
+#     except Exception as e:
+#         traceback.print_exc()
+#         print("❌ Mongo init failed")
+#         raise RuntimeError("Database initialization failed") from e
+
+
+
+from datetime import datetime, timedelta
+from app.db.models_mongo import Student
+
 @app.on_event("startup")
 async def on_startup():
     try:
         await init_db()
         print("✅ Mongo / Beanie initialized.")
+
+        # 🔥 Cleanup only STALE enrollments (older than 10 minutes)
+        result = await Student.find(
+            {
+                "enroll_status": "IN_PROGRESS",
+                "created_at": {
+                    "$lt": datetime.utcnow() - timedelta(minutes=10)
+                }
+            }
+        ).delete()
+
+        print(f"🧹 Cleaned {result.deleted_count} stale enrollments")
+
     except Exception as e:
         traceback.print_exc()
         print("❌ Mongo init failed")

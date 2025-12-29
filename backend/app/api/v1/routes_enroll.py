@@ -98,3 +98,30 @@ async def enroll(
         "enrolled_images": student.enrolled_images,
         "bbox": faces[0].get("bbox"),
     }
+
+
+@router.post("/finalize/{student_id}", summary="Finalize enrollment")
+async def finalize_enrollment(student_id: str):
+    try:
+        doc_id = PydanticObjectId(student_id)
+    except Exception:
+        raise HTTPException(400, "Invalid student_id")
+
+    student = await Student.get(doc_id)
+    if not student:
+        raise HTTPException(404, "Student not found")
+
+    # ❌ No images → delete student
+    if student.enrolled_images == 0:
+        await student.delete()
+        raise HTTPException(400, "No images enrolled")
+
+    # ✅ COMMIT
+    student.enroll_status = "COMPLETED"
+    await student.save()
+
+    return {
+        "success": True,
+        "student_id": str(student.id),
+        "enrolled_images": student.enrolled_images,
+    }

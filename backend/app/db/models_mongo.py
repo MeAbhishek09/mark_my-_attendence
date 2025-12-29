@@ -17,6 +17,7 @@ class Student(Document):
     # ===== ENROLLMENT TRACKING (🔥 IMPORTANT) =====
     enroll_failures: int = Field(default=0, description="Failed image enroll attempts")
     enrolled_images: int = Field(default=0, description="Successfully enrolled images")
+    enroll_status: str = "IN_PROGRESS" 
 
 
     class Settings:

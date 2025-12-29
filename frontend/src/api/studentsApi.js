@@ -21,3 +21,11 @@ export async function enrollImage(studentId, studentName, fileBlob) {
   });
   return res.data;
 }
+
+
+export async function finalizeEnrollment(studentId) {
+  const res = await axios.post(
+    `${BASE_URL}/api/v1/enroll/finalize/${studentId}`
+  );
+  return res.data;
+}

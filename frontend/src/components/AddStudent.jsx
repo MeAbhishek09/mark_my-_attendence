@@ -1,6 +1,6 @@
 import React, { useRef, useState } from "react";
 import Webcam from "react-webcam";
-import { createStudent, enrollImage } from "../api/studentsApi";
+import { createStudent, enrollImage, finalizeEnrollment  } from "../api/studentsApi";
 
 /**
  * AddStudent (13 auto-captures)
@@ -223,8 +223,19 @@ export default function AddStudent() {
       }
 
 
+        if (!enrollmentFailed) {
+        try {
+        await finalizeEnrollment(student.id);
+        } catch (err) {
+        alert(
+          "Enrollment completed but finalization failed.\n" +
+          "Please retry finalization."
+        );
+        setStatus("Finalization failed. Please retry.");
+        return; // ⛔ DO NOT show success UI
+        }
 
-      if (!enrollmentFailed) {
+        // ✅ success UI only after finalize succeeds
         setStatus("All images uploaded. Student added successfully.");
         alert("Student enrolled successfully");
 
@@ -232,14 +243,34 @@ export default function AddStudent() {
         setCaptures([]);
         setUploadProgress(null);
         setForm({
-          name: "",
-          roll_no: "",
-          exam_no: "",
-          dept: "",
-          sem: "",
-          course_name: "",
+        name: "",
+        roll_no: "",
+        exam_no: "",
+        dept: "",
+        sem: "",
+        course_name: "",
         });
-      }
+        }
+
+      // if (!enrollmentFailed) {
+      //   await finalizeEnrollment(student.id);
+
+      //   setStatus("All images uploaded. Student added successfully.");
+      //   alert("Student enrolled successfully");
+
+      //   captures.forEach((c) => URL.revokeObjectURL(c.url));
+      //   setCaptures([]);
+      //   setUploadProgress(null);
+      //   setForm({
+      //     name: "",
+      //     roll_no: "",
+      //     exam_no: "",
+      //     dept: "",
+      //     sem: "",
+      //     course_name: "",
+      //   });
+      // }
+
 
       
 
