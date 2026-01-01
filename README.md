@@ -214,16 +214,17 @@ cd your-repo-name
 cd backend
 pip install -r requirements.txt
 python main.py
-
+```
 ###Backend runs on:
 
 http://localhost:5000
 
 3️⃣ Frontend Setup
+```bash
 cd frontend
 npm install
 npm run dev
-
+```
 
 Frontend runs on:
 
